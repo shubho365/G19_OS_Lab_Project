@@ -109,6 +109,9 @@ extern int sys_getprocs(void);
 extern int sys_set_priority(void);
 extern int sys_cps(void);
 extern int sys_waitx(void);
+extern int sys_waitpid(void);
+extern int sys_sigkill(void);
+extern int sys_shmem(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -138,6 +141,9 @@ static int (*syscalls[])(void) = {
 [SYS_set_priority] sys_set_priority,
 [SYS_cps]          sys_cps,
 [SYS_waitx]        sys_waitx,
+[SYS_waitpid]      sys_waitpid,
+[SYS_sigkill]      sys_sigkill,
+[SYS_shmem]        sys_shmem,
 };
 
 void

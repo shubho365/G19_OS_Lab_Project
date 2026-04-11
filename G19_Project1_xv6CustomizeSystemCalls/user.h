@@ -29,6 +29,9 @@ int getprocs(void);
 int set_priority(int pid, int prio);
 int cps(void);
 int waitx(int *wtime, int *rtime);
+int waitpid(int pid);
+int sigkill(int pid);
+int shmem(int key);
 
 // ulib.c
 int stat(const char*, struct stat*);
