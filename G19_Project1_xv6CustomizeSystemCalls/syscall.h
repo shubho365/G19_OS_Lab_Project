@@ -26,3 +26,8 @@
 #define SYS_set_priority  24
 #define SYS_cps           25
 #define SYS_waitx         26
+
+// New syscalls — Project 1 (covering Process Creation, Signals, IPC)
+#define SYS_waitpid       27
+#define SYS_sigkill       28
+#define SYS_shmem         29

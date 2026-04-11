@@ -225,3 +225,98 @@ sys_waitx(void)
     sleep(curproc, &ptable.lock);
   }
 }
+
+// ============================================================
+//   New syscalls — covers Process Creation, Signals, IPC
+// ============================================================
+
+// 6. waitpid(pid): wait for a *specific* child process.
+//    Unlike wait() which reaps ANY zombie child, waitpid()
+//    blocks until the child with the given PID exits.
+//    Demonstrates the fork→exec→waitpid process lifecycle.
+int
+sys_waitpid(void)
+{
+  int pid;
+  if(argint(0, &pid) < 0) return -1;
+
+  struct proc *p;
+  struct proc *curproc = myproc();
+
+  acquire(&ptable.lock);
+  for(;;){
+    int found = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->parent != curproc || p->pid != pid) continue;
+      found = 1;
+      if(p->state == ZOMBIE){
+        int cpid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        freevm(p->pgdir);
+        p->state  = UNUSED;
+        p->pid    = 0;
+        p->parent = 0;
+        p->name[0]= 0;
+        p->killed = 0;
+        release(&ptable.lock);
+        return cpid;   // return the reaped PID on success
+      }
+    }
+    if(!found || curproc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+    sleep(curproc, &ptable.lock);
+  }
+}
+
+// 7. sigkill(pid): send a kill signal to any process by PID.
+//    Sets p->killed = 1 (the xv6 signal mechanism) so the
+//    target process exits at the next safe point.
+//    Demonstrates signal-based process termination.
+int
+sys_sigkill(void)
+{
+  int pid;
+  if(argint(0, &pid) < 0) return -1;
+  // kill() is already defined in proc.c and declared in defs.h
+  return kill(pid);
+}
+
+// 8. shmem(key): shared-memory IPC.
+//    Processes that call shmem() with the same key (0-3) get a
+//    pointer to the same physical page — classic IPC technique.
+//    The page is lazily allocated on first use and persists for
+//    the lifetime of the kernel session.
+#define SHM_NKEYS 4
+static char *shm_pages[SHM_NKEYS];  // one page per key (kernel VA)
+
+int
+sys_shmem(void)
+{
+  int key;
+  if(argint(0, &key) < 0 || key < 0 || key >= SHM_NKEYS) return -1;
+
+  // Allocate the backing page on first access for this key.
+  if(shm_pages[key] == 0){
+    shm_pages[key] = kalloc();
+    if(shm_pages[key] == 0) return -1;
+    memset(shm_pages[key], 0, PGSIZE);
+  }
+
+  // Grow the calling process's address space by one page and
+  // copy the shared page content into it.
+  struct proc *curproc = myproc();
+  uint va = curproc->sz;
+
+  // Use growproc to allocate a new page in user space.
+  if(growproc(PGSIZE) < 0) return -1;
+
+  // Overwrite the freshly-allocated user page with the shared
+  // page content (copyout handles the page-table walk safely).
+  if(copyout(curproc->pgdir, va, shm_pages[key], PGSIZE) < 0)
+    return -1;
+
+  return (int)va;  // return user virtual address of shared region
+}
