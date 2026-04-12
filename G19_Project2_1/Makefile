@@ -15,7 +15,7 @@ BINDIR  := bin
 
 UTILS   := custom_ls custom_cat custom_grep custom_wc \
            custom_cp custom_mv custom_rm custom_head custom_tail \
-           custom_chmod
+           custom_chmod custom_sort
 SHELL_BIN := custom_shell
 
 ALL_BINS := $(addprefix $(BINDIR)/,$(SHELL_BIN) $(UTILS))
@@ -44,6 +44,8 @@ test: all
 	@echo "---- custom_grep ISM ----" ; ./$(BINDIR)/custom_grep ISM sample.txt
 	@echo "---- custom_head -n 3 ----"; ./$(BINDIR)/custom_head -n 3 sample.txt
 	@echo "---- custom_tail -n 2 ----"; ./$(BINDIR)/custom_tail -n 2 sample.txt
+	@echo "---- custom_sort ----"     ; ./$(BINDIR)/custom_sort  sample.txt
+	@echo "---- custom_sort -r ----"  ; ./$(BINDIR)/custom_sort  -r sample.txt
 	@echo "---- custom_cp ----"       ; ./$(BINDIR)/custom_cp   sample.txt sample_copy.txt
 	@echo "---- custom_mv ----"       ; ./$(BINDIR)/custom_mv   sample_copy.txt sample_moved.txt
 	@echo "---- custom_rm ----"       ; ./$(BINDIR)/custom_rm   sample_moved.txt
