@@ -657,3 +657,14 @@ int sys_msgctl(void) {
   release(&queue_list_lock);
   return -1;
 }
+
+// ============================================================
+//   getncpu — return the number of active CPUs
+// ============================================================
+
+// 15. getncpu(): returns the number of CPUs detected at boot.
+int
+sys_getncpu(void)
+{
+  return ncpu;
+}

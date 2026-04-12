@@ -14,7 +14,8 @@ SRCDIR  := src
 BINDIR  := bin
 
 UTILS   := custom_ls custom_cat custom_grep custom_wc \
-           custom_cp custom_mv custom_rm custom_head custom_tail
+           custom_cp custom_mv custom_rm custom_head custom_tail \
+           custom_chmod
 SHELL_BIN := custom_shell
 
 ALL_BINS := $(addprefix $(BINDIR)/,$(SHELL_BIN) $(UTILS))

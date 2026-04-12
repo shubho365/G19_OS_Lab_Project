@@ -44,6 +44,7 @@ int msgget(key_t key, int msgflg);
 int msgsnd(int msqid, void *msgp, size_t msgsz, int msgflg);
 int msgrcv(int msqid, void *msgp, size_t msgsz, long int msgtyp, int msgflg);
 int msgctl(int msqid, int cmd, struct msqid_ds *buf);
+int getncpu(void);
 
 // ulib.c
 int stat(const char*, struct stat*);

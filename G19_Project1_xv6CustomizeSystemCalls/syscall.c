@@ -122,6 +122,7 @@ extern int sys_msgget(void);
 extern int sys_msgsnd(void);
 extern int sys_msgrcv(void);
 extern int sys_msgctl(void);
+extern int sys_getncpu(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -164,6 +165,7 @@ static int (*syscalls[])(void) = {
 [SYS_msgsnd]       sys_msgsnd,
 [SYS_msgrcv]       sys_msgrcv,
 [SYS_msgctl]       sys_msgctl,
+[SYS_getncpu]      sys_getncpu,
 };
 
 void

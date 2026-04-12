@@ -41,3 +41,4 @@
 #define SYS_msgsnd        37
 #define SYS_msgrcv        38
 #define SYS_msgctl        39
+#define SYS_getncpu       40
