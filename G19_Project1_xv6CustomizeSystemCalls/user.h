@@ -35,6 +35,9 @@ int shmem(int key);
 int fork2(int priority);
 int shmget(int id);
 int shmem_count(int id);
+int mutex_create(void);
+int mutex_lock(int mutex_id);
+int mutex_unlock(int mutex_id);
 
 // ulib.c
 int stat(const char*, struct stat*);

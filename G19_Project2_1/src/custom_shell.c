@@ -171,6 +171,7 @@ static int run_builtin(char *tokens[], int n)
         printf("  custom_cp   <src> <dst>           Copy a file\n");
         printf("  custom_mv   <src> <dst>           Move/rename a file\n");
         printf("  custom_rm   [-r] <path>           Remove file or directory\n");
+        printf("  custom_tail [-n N] <file>         Print last N lines (default 10)\n");
         printf("  custom_head [-n N] <file>         Print first N lines (default 10)\n\n");
         printf("Shell features:\n");
         printf("  cmd1 | cmd2                       Pipe output of cmd1 into cmd2\n");

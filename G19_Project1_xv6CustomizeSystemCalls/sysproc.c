@@ -337,3 +337,92 @@ sys_shmem_count(void)
     return -1;
   return shmem_count(id);
 }
+
+// ============================================================
+//   Mutex Lock System Calls
+// ============================================================
+
+#define MAX_MUTEXES 10
+
+static struct spinlock mutex_table_lock;
+static int mutex_table_inited = 0;
+
+static struct {
+  int allocated;
+  int locked;
+  int pid;
+} user_mutexes[MAX_MUTEXES];
+
+static void
+mutex_table_init(void)
+{
+  if(!mutex_table_inited){
+    initlock(&mutex_table_lock, "mutextbl");
+    mutex_table_inited = 1;
+  }
+}
+
+// 12. mutex_create(): returns an ID of a newly allocated mutex
+int
+sys_mutex_create(void)
+{
+  int i;
+  mutex_table_init();
+  acquire(&mutex_table_lock);
+  for(i = 0; i < MAX_MUTEXES; i++){
+    if(!user_mutexes[i].allocated){
+      user_mutexes[i].allocated = 1;
+      user_mutexes[i].locked = 0;
+      user_mutexes[i].pid = 0;
+      release(&mutex_table_lock);
+      return i;
+    }
+  }
+  release(&mutex_table_lock);
+  return -1; // No free mutexes
+}
+
+// 13. mutex_lock(id): blocks until the mutex is free, then acquires it
+int
+sys_mutex_lock(void)
+{
+  int id;
+  if(argint(0, &id) < 0 || id < 0 || id >= MAX_MUTEXES)
+    return -1;
+
+  mutex_table_init();
+  acquire(&mutex_table_lock);
+  if(!user_mutexes[id].allocated){
+    release(&mutex_table_lock);
+    return -1;
+  }
+  while(user_mutexes[id].locked){
+    sleep(&user_mutexes[id], &mutex_table_lock);
+  }
+  user_mutexes[id].locked = 1;
+  user_mutexes[id].pid = myproc()->pid;
+  release(&mutex_table_lock);
+  return 0;
+}
+
+// 14. mutex_unlock(id): releases the mutex and wakes up waiters
+int
+sys_mutex_unlock(void)
+{
+  int id;
+  if(argint(0, &id) < 0 || id < 0 || id >= MAX_MUTEXES)
+    return -1;
+
+  mutex_table_init();
+  acquire(&mutex_table_lock);
+  if(!user_mutexes[id].allocated || !user_mutexes[id].locked || user_mutexes[id].pid != myproc()->pid){
+    release(&mutex_table_lock);
+    return -1;
+  }
+  user_mutexes[id].locked = 0;
+  user_mutexes[id].pid = 0;
+  release(&mutex_table_lock);
+  // wakeup acquires ptable.lock internally, so call it AFTER releasing our lock
+  wakeup(&user_mutexes[id]);
+  return 0;
+}

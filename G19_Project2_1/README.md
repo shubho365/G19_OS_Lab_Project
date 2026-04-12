@@ -23,7 +23,8 @@ G19_Project2_1/
     ├── custom_cp.c
     ├── custom_mv.c
     ├── custom_rm.c
-    └── custom_head.c     <- NEW
+    ├── custom_head.c
+    └── custom_tail.c     <- NEW
 ```
 
 ## Building
@@ -47,6 +48,7 @@ make clean       # deletes ./bin and any temp files
 | `custom_mv`    | Rename / move a file                   | `rename` + `EXDEV` fallback              |
 | `custom_rm`    | Delete file or directory tree (`-r`)   | `unlink`, `rmdir`, `lstat`, `opendir`    |
 | `custom_head`  | Print first N lines of a file          | `open`, `read`, `write`, `close`         |
+| `custom_tail`  | Print last N lines of a file           | `open`, `read`, `write`, `close`         |
 
 ## The shell — `custom_shell`
 

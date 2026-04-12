@@ -34,3 +34,6 @@
 #define SYS_fork2         30
 #define SYS_shmget        31
 #define SYS_shmem_count   32
+#define SYS_mutex_create  33
+#define SYS_mutex_lock    34
+#define SYS_mutex_unlock  35
