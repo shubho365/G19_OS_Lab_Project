@@ -426,3 +426,234 @@ sys_mutex_unlock(void)
   wakeup(&user_mutexes[id]);
   return 0;
 }
+
+// ============================================================
+//   Message Queue System Calls (Linked Lists)
+// ============================================================
+
+#include "msgqueue.h"
+
+struct msg_node {
+  struct msg_node *next;
+  long mtype;
+  size_t length;
+  char data[4000]; // Fits in a 4096 page with padding
+};
+
+struct msg_q {
+  struct msg_q *next;   
+  struct spinlock lock; 
+  int id;               
+  key_t key;            
+  struct msg_node *head;
+  struct msg_node *tail;
+  uint qnum;            
+};
+
+static struct msg_q *queue_list_head = 0;
+static struct spinlock queue_list_lock;
+static int queue_list_inited = 0;
+static int next_q_id = 1;
+
+static void queue_table_init(void) {
+  if(!queue_list_inited) {
+    initlock(&queue_list_lock, "msgqueue");
+    queue_list_inited = 1;
+  }
+}
+
+int sys_msgget(void) {
+  int key, msgflg;
+  if(argint(0, &key) < 0 || argint(1, &msgflg) < 0) return -1;
+  
+  queue_table_init();
+  acquire(&queue_list_lock);
+  
+  struct msg_q *q = queue_list_head;
+  while(q) {
+    if(q->key == key) {
+      release(&queue_list_lock);
+      return q->id;
+    }
+    q = q->next;
+  }
+  
+  if(!(msgflg & IPC_CREAT)) {
+    release(&queue_list_lock);
+    return -1;
+  }
+  
+  q = (struct msg_q*)kalloc();
+  if(!q) {
+    release(&queue_list_lock);
+    return -1;
+  }
+  
+  q->key = key;
+  q->id = next_q_id++;
+  q->head = 0;
+  q->tail = 0;
+  q->qnum = 0;
+  initlock(&q->lock, "msg_q_lock");
+  
+  q->next = queue_list_head;
+  queue_list_head = q;
+  
+  int ret_id = q->id;
+  release(&queue_list_lock);
+  return ret_id;
+}
+
+int sys_msgsnd(void) {
+  int msqid, msgflg;
+  int msgsz;
+  char *msgp;
+  
+  if(argint(0, &msqid) < 0 || argint(2, &msgsz) < 0 || argint(3, &msgflg) < 0) return -1;
+  if(msgsz < 0 || msgsz > 4000) return -1;
+  
+  if(argptr(1, &msgp, msgsz + sizeof(long)) < 0) return -1;
+  
+  queue_table_init();
+  acquire(&queue_list_lock);
+  struct msg_q *q = queue_list_head;
+  while(q) {
+    if(q->id == msqid) break;
+    q = q->next;
+  }
+  release(&queue_list_lock);
+  
+  if(!q) return -1;
+  
+  struct msg_node *node = (struct msg_node*)kalloc();
+  if(!node) return -1;
+  
+  long *user_mtype = (long*)msgp;
+  node->mtype = *user_mtype;
+  node->length = msgsz;
+  node->next = 0;
+  if(msgsz > 0)
+      memmove(node->data, msgp + sizeof(long), msgsz);
+  
+  acquire(&q->lock);
+  if(!q->head) {
+    q->head = node;
+    q->tail = node;
+  } else {
+    q->tail->next = node;
+    q->tail = node;
+  }
+  q->qnum++;
+  wakeup(q);
+  release(&q->lock);
+  
+  return 0;
+}
+
+int sys_msgrcv(void) {
+  int msqid, msgtyp, msgflg;
+  int msgsz;
+  char *msgp;
+  
+  if(argint(0, &msqid) < 0 || argint(2, &msgsz) < 0 || argint(3, &msgtyp) < 0 || argint(4, &msgflg) < 0) return -1;
+  if(argptr(1, &msgp, sizeof(long)) < 0) return -1; // At least long is required
+  
+  queue_table_init();
+  acquire(&queue_list_lock);
+  struct msg_q *q = queue_list_head;
+  while(q) {
+    if(q->id == msqid) break;
+    q = q->next;
+  }
+  release(&queue_list_lock);
+  
+  if(!q) return -1;
+  
+  acquire(&q->lock);
+  for(;;) {
+    struct msg_node *prev = 0;
+    struct msg_node *curr = q->head;
+    
+    while(curr) {
+      if(msgtyp == 0 || curr->mtype == msgtyp) {
+        if(prev) prev->next = curr->next;
+        else q->head = curr->next;
+        
+        if(curr == q->tail) q->tail = prev;
+        
+        q->qnum--;
+        release(&q->lock);
+        
+        int copysz = (curr->length < (uint)msgsz) ? curr->length : msgsz;
+        if(argptr(1, &msgp, sizeof(long) + copysz) < 0) {
+            kfree((char*)curr);
+            return -1;
+        }
+
+        long *user_mtype = (long*)msgp;
+        *user_mtype = curr->mtype;
+        if(copysz > 0)
+            memmove(msgp + sizeof(long), curr->data, copysz);
+        
+        kfree((char*)curr);
+        return copysz;
+      }
+      prev = curr;
+      curr = curr->next;
+    }
+    
+    if(msgflg & IPC_NOWAIT) {
+      release(&q->lock);
+      return -1;
+    }
+    
+    // Check if process killed
+    if(myproc()->killed){
+        release(&q->lock);
+        return -1;
+    }
+    sleep(q, &q->lock);
+  }
+}
+
+int sys_msgctl(void) {
+  int msqid, cmd;
+  char *buf;
+  if(argint(0, &msqid) < 0 || argint(1, &cmd) < 0 || argptr(2, &buf, 0) < 0) return -1;
+  
+  if(cmd != IPC_RMID) return -1; 
+  
+  queue_table_init();
+  acquire(&queue_list_lock);
+  
+  struct msg_q *prev = 0;
+  struct msg_q *curr = queue_list_head;
+  
+  while(curr) {
+    if(curr->id == msqid) {
+       if(prev) prev->next = curr->next;
+       else queue_list_head = curr->next;
+       release(&queue_list_lock);
+       
+       acquire(&curr->lock);
+       struct msg_node *n = curr->head;
+       while(n) {
+         struct msg_node *nxt = n->next;
+         kfree((char*)n);
+         n = nxt;
+       }
+       curr->head = curr->tail = 0;
+       curr->qnum = 0;
+       wakeup(curr);
+       release(&curr->lock);
+       
+       kfree((char*)curr);
+       return 0;
+    }
+    prev = curr;
+    curr = curr->next;
+  }
+  
+  release(&queue_list_lock);
+  return -1;
+}

@@ -118,6 +118,10 @@ extern int sys_shmem_count(void);
 extern int sys_mutex_create(void);
 extern int sys_mutex_lock(void);
 extern int sys_mutex_unlock(void);
+extern int sys_msgget(void);
+extern int sys_msgsnd(void);
+extern int sys_msgrcv(void);
+extern int sys_msgctl(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -156,6 +160,10 @@ static int (*syscalls[])(void) = {
 [SYS_mutex_create] sys_mutex_create,
 [SYS_mutex_lock]   sys_mutex_lock,
 [SYS_mutex_unlock] sys_mutex_unlock,
+[SYS_msgget]       sys_msgget,
+[SYS_msgsnd]       sys_msgsnd,
+[SYS_msgrcv]       sys_msgrcv,
+[SYS_msgctl]       sys_msgctl,
 };
 
 void

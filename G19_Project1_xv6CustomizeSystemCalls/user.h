@@ -1,5 +1,7 @@
 struct stat;
 struct rtcdate;
+#include "msgqueue.h"
+
 
 // system calls
 int fork(void);
@@ -38,6 +40,10 @@ int shmem_count(int id);
 int mutex_create(void);
 int mutex_lock(int mutex_id);
 int mutex_unlock(int mutex_id);
+int msgget(key_t key, int msgflg);
+int msgsnd(int msqid, void *msgp, size_t msgsz, int msgflg);
+int msgrcv(int msqid, void *msgp, size_t msgsz, long int msgtyp, int msgflg);
+int msgctl(int msqid, int cmd, struct msqid_ds *buf);
 
 // ulib.c
 int stat(const char*, struct stat*);

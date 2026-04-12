@@ -37,3 +37,7 @@
 #define SYS_mutex_create  33
 #define SYS_mutex_lock    34
 #define SYS_mutex_unlock  35
+#define SYS_msgget        36
+#define SYS_msgsnd        37
+#define SYS_msgrcv        38
+#define SYS_msgctl        39
