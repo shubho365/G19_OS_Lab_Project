@@ -231,9 +231,6 @@ sys_waitx(void)
 // ============================================================
 
 // 6. waitpid(pid): wait for a *specific* child process.
-//    Unlike wait() which reaps ANY zombie child, waitpid()
-//    blocks until the child with the given PID exits.
-//    Demonstrates the fork→exec→waitpid process lifecycle.
 int
 sys_waitpid(void)
 {
@@ -260,7 +257,7 @@ sys_waitpid(void)
         p->name[0]= 0;
         p->killed = 0;
         release(&ptable.lock);
-        return cpid;   // return the reaped PID on success
+        return cpid;
       }
     }
     if(!found || curproc->killed){
@@ -272,25 +269,17 @@ sys_waitpid(void)
 }
 
 // 7. sigkill(pid): send a kill signal to any process by PID.
-//    Sets p->killed = 1 (the xv6 signal mechanism) so the
-//    target process exits at the next safe point.
-//    Demonstrates signal-based process termination.
 int
 sys_sigkill(void)
 {
   int pid;
   if(argint(0, &pid) < 0) return -1;
-  // kill() is already defined in proc.c and declared in defs.h
   return kill(pid);
 }
 
-// 8. shmem(key): shared-memory IPC.
-//    Processes that call shmem() with the same key (0-3) get a
-//    pointer to the same physical page — classic IPC technique.
-//    The page is lazily allocated on first use and persists for
-//    the lifetime of the kernel session.
+// 8. shmem(key): shared-memory IPC (simple copy-based, keys 0-3).
 #define SHM_NKEYS 4
-static char *shm_pages[SHM_NKEYS];  // one page per key (kernel VA)
+static char *shm_pages[SHM_NKEYS];
 
 int
 sys_shmem(void)
@@ -298,25 +287,53 @@ sys_shmem(void)
   int key;
   if(argint(0, &key) < 0 || key < 0 || key >= SHM_NKEYS) return -1;
 
-  // Allocate the backing page on first access for this key.
   if(shm_pages[key] == 0){
     shm_pages[key] = kalloc();
     if(shm_pages[key] == 0) return -1;
     memset(shm_pages[key], 0, PGSIZE);
   }
 
-  // Grow the calling process's address space by one page and
-  // copy the shared page content into it.
   struct proc *curproc = myproc();
   uint va = curproc->sz;
 
-  // Use growproc to allocate a new page in user space.
   if(growproc(PGSIZE) < 0) return -1;
 
-  // Overwrite the freshly-allocated user page with the shared
-  // page content (copyout handles the page-table walk safely).
   if(copyout(curproc->pgdir, va, shm_pages[key], PGSIZE) < 0)
     return -1;
 
-  return (int)va;  // return user virtual address of shared region
-}
+  return (int)va;
+}
+
+// ============================================================
+//   fork2 + true shared memory (shmget / shmem_count)
+// ============================================================
+
+// 9. fork2(priority): fork with caller-specified child priority.
+int
+sys_fork2(void)
+{
+  int priority;
+  if(argint(0, &priority) < 0)
+    return -1;
+  return fork2(priority);
+}
+
+// 10. shmget(id): map shared physical page `id` (0-7) into process.
+int
+sys_shmget(void)
+{
+  int id;
+  if(argint(0, &id) < 0)
+    return -1;
+  return shmget(id);
+}
+
+// 11. shmem_count(id): return reference count for shared page `id`.
+int
+sys_shmem_count(void)
+{
+  int id;
+  if(argint(0, &id) < 0)
+    return -1;
+  return shmem_count(id);
+}

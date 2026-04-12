@@ -31,3 +31,6 @@
 #define SYS_waitpid       27
 #define SYS_sigkill       28
 #define SYS_shmem         29
+#define SYS_fork2         30
+#define SYS_shmget        31
+#define SYS_shmem_count   32

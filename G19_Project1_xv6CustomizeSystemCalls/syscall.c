@@ -112,6 +112,9 @@ extern int sys_waitx(void);
 extern int sys_waitpid(void);
 extern int sys_sigkill(void);
 extern int sys_shmem(void);
+extern int sys_fork2(void);
+extern int sys_shmget(void);
+extern int sys_shmem_count(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -144,6 +147,9 @@ static int (*syscalls[])(void) = {
 [SYS_waitpid]      sys_waitpid,
 [SYS_sigkill]      sys_sigkill,
 [SYS_shmem]        sys_shmem,
+[SYS_fork2]        sys_fork2,
+[SYS_shmget]       sys_shmget,
+[SYS_shmem_count]  sys_shmem_count,
 };
 
 void

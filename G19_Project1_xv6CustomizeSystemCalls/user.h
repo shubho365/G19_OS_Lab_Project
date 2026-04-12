@@ -32,6 +32,9 @@ int waitx(int *wtime, int *rtime);
 int waitpid(int pid);
 int sigkill(int pid);
 int shmem(int key);
+int fork2(int priority);
+int shmget(int id);
+int shmem_count(int id);
 
 // ulib.c
 int stat(const char*, struct stat*);

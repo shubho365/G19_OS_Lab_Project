@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "spinlock.h"
 #include "elf.h"
 
 extern char data[];  // defined by kernel.ld
@@ -385,10 +386,84 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   return 0;
 }
 
-//PAGEBREAK!
-// Blank page.
-//PAGEBREAK!
-// Blank page.
-//PAGEBREAK!
-// Blank page.
+// ============================================================
+//   Shared memory support
+// ============================================================
+
+#define NSHM 8  // number of shared memory regions (ids 0..7)
+
+struct {
+  struct spinlock lock;
+  struct {
+    char *page;    // physical page (kernel virtual address), 0 if not yet allocated
+    int   refcnt;  // number of processes that have mapped this page
+  } regions[NSHM];
+} shmtable;
+
+void
+shminit(void)
+{
+  initlock(&shmtable.lock, "shmtable");
+  int i;
+  for(i = 0; i < NSHM; i++){
+    shmtable.regions[i].page   = 0;
+    shmtable.regions[i].refcnt = 0;
+  }
+}
+
+// Map shared memory region `id` into the calling process's address space.
+// Returns the user virtual address of the shared page, or -1 on error.
+int
+shmget(int id)
+{
+  struct proc *curproc = myproc();
+
+  if(id < 0 || id >= NSHM)
+    return -1;
+
+  acquire(&shmtable.lock);
+
+  // Allocate the physical page on first use.
+  if(shmtable.regions[id].page == 0){
+    char *mem = kalloc();
+    if(mem == 0){
+      release(&shmtable.lock);
+      return -1;
+    }
+    memset(mem, 0, PGSIZE);
+    shmtable.regions[id].page = mem;
+    shmtable.regions[id].refcnt = 0;
+  }
+
+  char *pa = shmtable.regions[id].page;
+
+  // Map the shared page at the top of the process's current address space.
+  uint va = PGROUNDUP(curproc->sz);
+  if(mappages(curproc->pgdir, (char*)va, PGSIZE, V2P(pa), PTE_W | PTE_U) < 0){
+    release(&shmtable.lock);
+    return -1;
+  }
+  curproc->sz = va + PGSIZE;
+
+  shmtable.regions[id].refcnt++;
+
+  release(&shmtable.lock);
+
+  switchuvm(curproc);
+  return va;
+}
+
+// Return the reference count for shared memory region `id`.
+int
+shmem_count(int id)
+{
+  if(id < 0 || id >= NSHM)
+    return -1;
+
+  int cnt;
+  acquire(&shmtable.lock);
+  cnt = shmtable.regions[id].refcnt;
+  release(&shmtable.lock);
+  return cnt;
+}
 
