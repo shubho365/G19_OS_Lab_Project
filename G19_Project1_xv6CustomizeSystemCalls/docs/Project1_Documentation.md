@@ -21,6 +21,10 @@ This project adds extensive new functionalities to the `xv6` kernel, introducing
 - `SYS_shmem (29)`
 - `SYS_shmget (31)`
 - `SYS_shmem_count (32)`
+- SYS_msgget (36)
+- SYS_msgsnd (37)
+- SYS_msgrcv (38)
+- SYS_msgctl (39)
 Permits multiple independent processes to request pages mapped to the exact same physical frame, allowing zero-copy sharing of variables.
 
 ### 4. Locks (Mutexes)
