@@ -173,7 +173,8 @@ static int run_builtin(char *tokens[], int n)
         printf("  custom_rm   [-r] <path>           Remove file or directory\n");
         printf("  custom_tail [-n N] <file>         Print last N lines (default 10)\n");
         printf("  custom_head [-n N] <file>         Print first N lines (default 10)\n");
-        printf("  custom_chmod <mode> <file>         Change file permissions (octal)\n\n");
+        printf("  custom_chmod <mode> <file>         Change file permissions (octal)\n");
+        printf("  custom_sort [-r] [-n] <file>      Sort lines (alpha, numeric, reverse)\n\n");
         printf("Shell features:\n");
         printf("  cmd1 | cmd2                       Pipe output of cmd1 into cmd2\n");
         printf("  cmd > file                        Redirect stdout to file\n");
